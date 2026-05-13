@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { routedExtract } from "@/lib/ai/router";
 import { isValidTaxId } from "@/lib/validation/tax-id";
@@ -60,6 +61,45 @@ export async function POST(request: Request) {
     const buf = Buffer.from(await file.arrayBuffer());
     const mediaType = file.type || "image/jpeg";
     const imageBase64 = buf.toString("base64");
+    const imageHash = crypto.createHash("sha256").update(buf).digest("hex");
+
+    // Dedup: same image bytes from the same user → return existing receipt
+    // instead of running Claude + uploading again. Ignore error rows so a
+    // failed previous attempt doesn't block a retry of the same image.
+    const { data: dup } = await supabase
+      .from("receipts")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("image_hash", imageHash)
+      .neq("status", "error")
+      .limit(1)
+      .maybeSingle();
+    if (dup) {
+      return Response.json(
+        {
+          error: "You've already uploaded this exact image.",
+          duplicate_of: dup.id,
+          message: "Returning the existing receipt instead of processing it again.",
+        },
+        { status: 409 }
+      );
+    }
+
+    // Lifetime cap (separate from daily rate limit which resets).
+    const lifetimeMax = Number(process.env.LIFETIME_UPLOAD_LIMIT ?? 30);
+    const { count: lifetimeCount } = await supabase
+      .from("receipts")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .neq("status", "error");
+    if ((lifetimeCount ?? 0) >= lifetimeMax) {
+      return Response.json(
+        {
+          error: `Lifetime upload cap of ${lifetimeMax} reached for this account. Delete older receipts to free up slots.`,
+        },
+        { status: 403 }
+      );
+    }
 
     const { data: created, error: insertErr } = await supabase
       .from("receipts")
@@ -67,6 +107,7 @@ export async function POST(request: Request) {
         user_id: user.id,
         image_url: "",
         status: "processing",
+        image_hash: imageHash,
       })
       .select("id")
       .single();

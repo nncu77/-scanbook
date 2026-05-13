@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -32,6 +33,7 @@ type ExtractionData = {
 
 export interface Receipt {
   id: string;
+  user_id: string;
   status: string;
   image_url: string | null;
   raw_extraction: { data?: ExtractionData; router_path?: string } | null;
@@ -40,6 +42,11 @@ export interface Receipt {
   processing_ms: number | null;
   token_cost_usd: string | number | null;
   error_message: string | null;
+}
+
+export interface DuplicateRef {
+  id: string;
+  created_at: string;
 }
 
 type FieldKey = keyof Omit<ExtractionData, "notes" | "items">;
@@ -85,9 +92,11 @@ function FieldShell({
 export function ReceiptEditor({
   receipt,
   imageUrl,
+  duplicates = [],
 }: {
   receipt: Receipt;
   imageUrl: string | null;
+  duplicates?: DuplicateRef[];
 }) {
   const router = useRouter();
   const data = receipt.corrected_data ?? receipt.raw_extraction?.data ?? null;
@@ -219,6 +228,29 @@ export function ReceiptEditor({
       </div>
 
       <div className="space-y-4">
+        {duplicates.length > 0 && (
+          <div className="border border-amber-400 bg-amber-50/40 dark:bg-amber-900/10 rounded-md p-3 text-sm">
+            <div className="font-medium text-amber-700 dark:text-amber-300 mb-1">
+              ⚠️ Duplicate invoice number
+            </div>
+            <div className="text-muted-foreground text-xs mb-2">
+              This invoice number also appears in {duplicates.length} other receipt
+              {duplicates.length === 1 ? "" : "s"} of yours. Possible double-entry.
+            </div>
+            <ul className="space-y-0.5">
+              {duplicates.map((d) => (
+                <li key={d.id}>
+                  <Link
+                    href={`/receipts/${d.id}`}
+                    className="text-xs underline text-amber-700 dark:text-amber-300"
+                  >
+                    {new Date(d.created_at).toLocaleString()} → /receipts/{d.id.slice(0, 8)}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {!data ? (
           <Card>
             <CardContent className="py-10 text-center text-muted-foreground">
