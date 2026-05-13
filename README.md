@@ -2,6 +2,8 @@
 
 > Snap a receipt, get structured data in 3 seconds.
 
+**Live demo:** <https://scanbook-three.vercel.app>
+
 AI-powered receipt and invoice digitization for Taiwanese small businesses. Mobile capture → 3-second structured output → human-in-the-loop review → CSV / Excel export.
 
 ---
