@@ -1,0 +1,18 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "app/api/receipts/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/receipts/[id]/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/extract/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/export/route.ts": {
+      "maxDuration": 30
+    }
+  },
+  "regions": ["hnd1"]
+}

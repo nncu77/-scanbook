@@ -1,0 +1,34 @@
+[
+  {
+    "image": "001.jpg",
+    "demo": true,
+    "expected": {
+      "merchant_name": "全家便利商店 信義店",
+      "tax_id": "12894627",
+      "date": "2026-03-15",
+      "invoice_number": "AB-12345678",
+      "subtotal": 114,
+      "tax_amount": 6,
+      "total_amount": 120,
+      "currency": "TWD",
+      "category": "餐飲",
+      "notes": null
+    }
+  },
+  {
+    "image": "002.jpg",
+    "demo": true,
+    "expected": {
+      "merchant_name": "台灣大車隊",
+      "tax_id": null,
+      "date": "2026-04-02",
+      "invoice_number": null,
+      "subtotal": null,
+      "tax_amount": null,
+      "total_amount": 340,
+      "currency": "TWD",
+      "category": "交通",
+      "notes": "台北市內 7.5km"
+    }
+  }
+]
