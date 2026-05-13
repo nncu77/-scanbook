@@ -2,7 +2,8 @@ import { extractReceipt, type ExtractResult } from "./extract-receipt";
 import type { ReceiptExtraction } from "./schema";
 
 const PRIMARY_MODEL = process.env.SCANBOOK_PRIMARY_MODEL || "claude-sonnet-4-6";
-const ROUTER_MODEL = process.env.SCANBOOK_ROUTER_MODEL || "claude-haiku-4-5";
+// Haiku 4.5 has no short alias; must use the dated snapshot ID.
+const ROUTER_MODEL = process.env.SCANBOOK_ROUTER_MODEL || "claude-haiku-4-5-20251001";
 
 // USD per million tokens. Match by model-id prefix to tolerate dated snapshots.
 const PRICING: Record<string, { input: number; output: number }> = {
@@ -12,7 +13,11 @@ const PRICING: Record<string, { input: number; output: number }> = {
 };
 
 function pricingFor(model: string) {
-  const key = Object.keys(PRICING).find((k) => model.startsWith(k));
+  // Normalize OpenRouter format ("anthropic/claude-sonnet-4.6") to direct
+  // Anthropic format ("claude-sonnet-4-6") so the lookup table works for both.
+  const stripped = model.includes("/") ? model.split("/")[1] : model;
+  const dashed = stripped.replace(/\./g, "-");
+  const key = Object.keys(PRICING).find((k) => dashed.startsWith(k));
   return key ? PRICING[key] : null;
 }
 

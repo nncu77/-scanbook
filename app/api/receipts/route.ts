@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { routedExtract } from "@/lib/ai/router";
 import { isValidTaxId } from "@/lib/validation/tax-id";
 import { isValidInvoiceNumber, normalizeInvoiceNumber } from "@/lib/validation/invoice-number";
@@ -76,7 +76,11 @@ export async function POST(request: Request) {
     const receiptId = created.id as string;
     const storagePath = `${user.id}/${receiptId}.${extFromMime(mediaType)}`;
 
-    const { error: uploadErr } = await supabase.storage
+    // Storage uses service-role: @supabase/ssr 0.10's cookie-auth client doesn't
+    // forward the user JWT to /storage/v1/*, so auth.uid() is NULL and RLS denies.
+    // Route logic already scopes the path to {user.id}/{receiptId}, so bypass is safe.
+    const admin = createServiceClient();
+    const { error: uploadErr } = await admin.storage
       .from(STORAGE_BUCKET)
       .upload(storagePath, buf, { contentType: mediaType, upsert: false });
     if (uploadErr) {
@@ -127,12 +131,13 @@ export async function POST(request: Request) {
         return Response.json({ error: updateErr?.message ?? "update failed" }, { status: 500 });
       }
 
-      const { data: signed } = await supabase.storage
+      const { data: signed } = await admin.storage
         .from(STORAGE_BUCKET)
         .createSignedUrl(storagePath, 60 * 60);
 
       return Response.json({ receipt: updated, image_signed_url: signed?.signedUrl ?? null });
     } catch (extractErr) {
+      console.error("[/api/receipts] extract failed:", extractErr);
       const message = extractErr instanceof Error ? extractErr.message : "extract failed";
       await supabase
         .from("receipts")
